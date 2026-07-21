@@ -1,3 +1,29 @@
+baseURL = "https://luxseen.com/"
+languageCode = "zh-cn"
+title = "Luxseen"
+theme = "PaperMod"
+
+enableRobotsTXT = true
+
+[pagination]
+pagerSize = 10
+
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+
+[params]
+defaultTheme = "auto"
+ShowReadingTime = true
+ShowShareButtons = true
+ShowPostNavLinks = true
+ShowBreadCrumbs = true
+ShowCodeCopyButtons = true
+ShowToc = true
+
+[params.homeInfoParams]
+Title = "你好，欢迎来到 Luxseen 👋"
+Content = "这里记录关于独立站运营、DTC、Shopify、数据分析、AI 工具，以及阅读与个人思考。把实践变成经验，把经验沉淀成方法。"
+
 [[menu.main]]
 identifier = "blog"
 name = "Blog"
