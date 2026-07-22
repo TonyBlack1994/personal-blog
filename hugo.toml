@@ -12,6 +12,9 @@ pagerSize = 10
 home = ["HTML", "RSS", "JSON"]
 
 [params]
+author = "Tony"
+description = "Luxseen 是一个记录独立站运营、DTC、Shopify、数据分析、AI 工具、阅读与个人思考的个人博客。"
+
 defaultTheme = "auto"
 ShowReadingTime = true
 ShowShareButtons = true
@@ -21,8 +24,6 @@ ShowCodeCopyButtons = true
 ShowToc = true
 
 [params.homeInfoParams]
-author = "Tony"
-description = "Luxseen 是一个记录独立站运营、DTC、Shopify、数据分析、AI 工具、阅读与个人思考的个人博客。"
 Title = "你好，欢迎来到 Luxseen 👋"
 Content = "这里记录关于独立站运营、DTC、Shopify、数据分析、AI 工具，以及阅读与个人思考。把实践变成经验，把经验沉淀成方法。"
 
