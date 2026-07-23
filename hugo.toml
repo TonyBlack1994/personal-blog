@@ -5,17 +5,27 @@ theme = "PaperMod"
 
 enableRobotsTXT = true
 
+[taxonomies]
+
+category = "categories"
+tag = "tags"
+subcategory = "subcategories"
+
 [pagination]
 pagerSize = 10
+
 
 [outputs]
 home = ["HTML", "RSS", "JSON"]
 
+
 [params]
 author = "Tony"
-description = "Luxseen 是一个记录独立站运营、DTC、Shopify、数据分析、AI 工具、阅读与个人思考的个人博客。"
+
+description = "Luxseen 是一个记录独立站运营、DTC、Shopify、数据分析、AI工具、阅读与个人思考的个人博客。"
 
 defaultTheme = "auto"
+
 ShowReadingTime = true
 ShowShareButtons = true
 ShowPostNavLinks = true
@@ -23,36 +33,50 @@ ShowBreadCrumbs = true
 ShowCodeCopyButtons = true
 ShowToc = true
 
+
 [params.homeInfoParams]
+
 Title = "你好，欢迎来到 Luxseen 👋"
-Content = "这里记录关于独立站运营、DTC、Shopify、数据分析、AI 工具，以及阅读与个人思考。把实践变成经验，把经验沉淀成方法。"
+
+Content = """
+这里记录关于独立站运营、DTC、Shopify、数据分析、AI工具，以及阅读与个人思考。
+
+把实践变成经验，把经验沉淀成方法。
+"""
+
+
+# 顶部导航
+
+[[menu.main]]
+identifier = "dtc"
+name = "DTC运营"
+url = "/dtc/"
+weight = 10
+
+
+[[menu.main]]
+identifier = "slash"
+name = "斜杠青年"
+url = "/slash/"
+weight = 20
+
+
+[[menu.main]]
+identifier = "life"
+name = "生活记录"
+url = "/life/"
+weight = 30
+
 
 [[menu.main]]
 identifier = "blog"
-name = "Blog"
+name = "文章"
 url = "/posts/"
-weight = 10
-
-[[menu.main]]
-identifier = "categories"
-name = "Categories"
-url = "/categories/"
-weight = 20
-
-[[menu.main]]
-identifier = "archives"
-name = "Archives"
-url = "/archives/"
-weight = 30
-
-[[menu.main]]
-identifier = "tags"
-name = "Tags"
-url = "/tags/"
 weight = 40
+
 
 [[menu.main]]
 identifier = "search"
-name = "Search"
+name = "搜索"
 url = "/search/"
 weight = 50
