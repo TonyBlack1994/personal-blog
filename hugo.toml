@@ -50,21 +50,21 @@ Content = """
 [[menu.main]]
 identifier = "dtc"
 name = "DTC运营"
-url = "/dtc/"
+url = "/categories/DTC运营/"
 weight = 10
 
 
 [[menu.main]]
 identifier = "slash"
 name = "斜杠青年"
-url = "/slash/"
+url = "/categories/斜杠青年/"
 weight = 20
 
 
 [[menu.main]]
 identifier = "life"
 name = "生活记录"
-url = "/life/"
+url = "/categories/生活记录/"
 weight = 30
 
 
