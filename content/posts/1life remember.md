@@ -1,10 +1,11 @@
 ---
 title: 1life remember
 date: 2026-07-23
-draft: true
+draft: false
 categories:
   - 生活记录
-tags: []
+tags:
+  - 生活
 description: ""
 ---
 
