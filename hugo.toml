@@ -1,31 +1,43 @@
 baseURL = "https://luxseen.com/"
+
 languageCode = "zh-cn"
+
 title = "Luxseen"
 
 theme = "PaperMod"
 
+
 enableRobotsTXT = true
 
 
-# =====================
-# 内容分类
-# =====================
+
+# =====================================
+# 分类系统
+# =====================================
 
 [taxonomies]
 
 category = "categories"
+
 tag = "tags"
+
 subcategory = "subcategories"
 
+
+
+# =====================================
+# 分页
+# =====================================
 
 [pagination]
 
 pagerSize = 10
 
 
-# =====================
-# 输出
-# =====================
+
+# =====================================
+# 网站输出
+# =====================================
 
 [outputs]
 
@@ -36,18 +48,22 @@ home = [
 ]
 
 
-# =====================
+
+# =====================================
 # 网站参数
-# =====================
+# =====================================
 
 [params]
 
+
 author = "Tony"
 
-description = "Luxseen 是一个记录独立站运营、DTC、Shopify、AI工具、数据分析、阅读与个人成长的个人博客。"
+
+description = "Luxseen 是一个记录 DTC 独立站运营、Shopify、AI工具、数据分析、全球消费趋势与个人成长的个人博客。"
 
 
 defaultTheme = "auto"
+
 
 
 # 阅读体验
@@ -65,7 +81,18 @@ ShowCodeCopyButtons = true
 ShowToc = true
 
 
-# 首页 Logo
+
+# 首页文章数量
+
+mainSections = [
+    "posts"
+]
+
+
+
+# =====================================
+# 顶部 Logo
+# =====================================
 
 [params.label]
 
@@ -75,8 +102,13 @@ icon = "/images/luxseen-logo.png"
 
 iconHeight = 35
 
+iconWidth = 35
 
+
+
+# =====================================
 # 网站图标
+# =====================================
 
 [params.assets]
 
@@ -90,11 +122,12 @@ apple_touch_icon = "/images/luxseen-logo.png"
 
 
 
-# =====================
-# 首页介绍
-# =====================
+# =====================================
+# 首页
+# =====================================
 
 [params.homeInfoParams]
+
 
 Title = "你好，欢迎来到 Luxseen 👋"
 
@@ -103,75 +136,148 @@ Content = """
 
 记录实践，沉淀方法。
 
-这里分享：
+
+这里记录：
 
 - DTC 独立站运营
 - Shopify 实践
 - AI 工具应用
 - 数据分析
+- 全球消费趋势
 - 阅读与个人成长
 
 
-把经历变成经验，把经验沉淀成方法。
+把经历变成经验，
+把经验沉淀成方法。
 
 """
 
 
 
-# =====================
+# =====================================
+# 搜索
+# =====================================
+
+[params.fuseOpts]
+
+isCaseSensitive = false
+
+shouldSort = true
+
+location = 0
+
+distance = 1000
+
+threshold = 0.4
+
+minMatchCharLength = 2
+
+keys = [
+    "title",
+    "permalink",
+    "summary",
+    "content"
+]
+
+
+
+# =====================================
 # 顶部导航
-# =====================
+# =====================================
 
-
-# 首页
 
 [[menu.main]]
+
 identifier = "home"
+
 name = "首页"
+
 url = "/"
+
 weight = 1
 
 
-# DTC运营
 
 [[menu.main]]
+
 identifier = "dtc"
+
 name = "DTC运营"
-url = "/categories/dtc运营/"
+
+url = "/categories/dtc/"
+
 weight = 10
 
 
-# 自我简介
 
 [[menu.main]]
+
 identifier = "about"
+
 name = "自我简介"
+
 url = "/about/"
+
 weight = 20
 
 
-# 环球代购
 
 [[menu.main]]
-identifier = "buy"
+
+identifier = "global-buy"
+
 name = "环球代购"
+
 url = "/global-buy/"
+
 weight = 30
 
 
-# 标签
 
 [[menu.main]]
+
 identifier = "tags"
+
 name = "标签"
+
 url = "/tags/"
+
 weight = 40
 
 
-# 搜索
 
 [[menu.main]]
+
 identifier = "search"
+
 name = "搜索"
+
 url = "/search/"
+
 weight = 50
+
+
+
+# =====================================
+# Markdown 渲染
+# =====================================
+
+[markup]
+
+
+[markup.goldmark]
+
+
+[markup.goldmark.renderer]
+
+unsafe = true
+
+
+
+[markup.highlight]
+
+noClasses = false
+
+lineNos = true
+
+codeFences = true
