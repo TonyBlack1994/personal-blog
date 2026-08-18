@@ -1,0 +1,15 @@
+.logo a::after {
+    content: "跨境服务分享";
+    margin-left: 14px;
+    padding-left: 14px;
+    border-left: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--secondary);
+}
+
+@media (max-width: 768px) {
+    .logo a::after {
+        display: none;
+    }
+}
