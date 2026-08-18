@@ -1,9 +1,15 @@
 baseURL = "https://luxseen.com/"
 languageCode = "zh-cn"
 title = "Luxseen"
+
 theme = "PaperMod"
 
 enableRobotsTXT = true
+
+
+# =====================
+# 内容分类
+# =====================
 
 [taxonomies]
 
@@ -11,78 +17,161 @@ category = "categories"
 tag = "tags"
 subcategory = "subcategories"
 
+
 [pagination]
+
 pagerSize = 10
 
 
-[outputs]
-home = ["HTML", "RSS", "JSON"]
+# =====================
+# 输出
+# =====================
 
+[outputs]
+
+home = [
+    "HTML",
+    "RSS",
+    "JSON"
+]
+
+
+# =====================
+# 网站参数
+# =====================
 
 [params]
+
 author = "Tony"
 
-description = "Luxseen 是一个记录独立站运营、DTC、Shopify、数据分析、AI工具、阅读与个人思考的个人博客。"
+description = "Luxseen 是一个记录独立站运营、DTC、Shopify、AI工具、数据分析、阅读与个人成长的个人博客。"
+
 
 defaultTheme = "auto"
 
+
+# 阅读体验
+
 ShowReadingTime = true
+
 ShowShareButtons = true
+
 ShowPostNavLinks = true
+
 ShowBreadCrumbs = true
+
 ShowCodeCopyButtons = true
+
 ShowToc = true
 
+
+# 首页 Logo
+
+[params.label]
+
+text = "Luxseen"
+
+icon = "/images/luxseen-logo.png"
+
+iconHeight = 35
+
+
+# 网站图标
+
+[params.assets]
+
+favicon = "/images/luxseen-logo.png"
+
+favicon16x16 = "/images/luxseen-logo.png"
+
+favicon32x32 = "/images/luxseen-logo.png"
+
+apple_touch_icon = "/images/luxseen-logo.png"
+
+
+
+# =====================
+# 首页介绍
+# =====================
 
 [params.homeInfoParams]
 
 Title = "你好，欢迎来到 Luxseen 👋"
 
-Content = """
-这里记录关于独立站运营、DTC、Shopify、数据分析、AI工具，以及阅读与个人思考。
 
-把实践变成经验，把经验沉淀成方法。
+Content = """
+
+记录实践，沉淀方法。
+
+这里分享：
+
+- DTC 独立站运营
+- Shopify 实践
+- AI 工具应用
+- 数据分析
+- 阅读与个人成长
+
+
+把经历变成经验，把经验沉淀成方法。
+
 """
 
 
+
+# =====================
 # 顶部导航
+# =====================
+
+
+# 首页
+
+[[menu.main]]
+identifier = "home"
+name = "首页"
+url = "/"
+weight = 1
+
+
+# DTC运营
 
 [[menu.main]]
 identifier = "dtc"
 name = "DTC运营"
-url = "/categories/DTC运营/"
+url = "/categories/dtc运营/"
 weight = 10
 
 
+# 自我简介
+
 [[menu.main]]
-identifier = "slash"
-name = "斜杠青年"
-url = "/categories/斜杠青年/"
+identifier = "about"
+name = "自我简介"
+url = "/about/"
 weight = 20
 
 
+# 环球代购
+
 [[menu.main]]
-identifier = "life"
-name = "生活记录"
-url = "/categories/生活记录/"
+identifier = "buy"
+name = "环球代购"
+url = "/global-buy/"
 weight = 30
 
 
+# 标签
+
 [[menu.main]]
-identifier = "blog"
-name = "文章"
-url = "/posts/"
+identifier = "tags"
+name = "标签"
+url = "/tags/"
 weight = 40
 
+
+# 搜索
 
 [[menu.main]]
 identifier = "search"
 name = "搜索"
 url = "/search/"
 weight = 50
-
-[[menu.main]]
-identifier = "tags"
-name = "标签"
-url = "/tags/"
-weight = 60
