@@ -2,10 +2,12 @@ $ErrorActionPreference = "Stop"
 
 # ==============================
 # Luxseen Blog Publisher
+# Cross-PC Version
 # ==============================
 
-$BlogRepo = "C:\Users\SJ\personal-blog"
+$BlogRepo = $PSScriptRoot
 $PostsDir = Join-Path $BlogRepo "content\posts"
+$MainBranch = "main"
 
 Write-Host ""
 Write-Host "========================================"
@@ -13,7 +15,14 @@ Write-Host "       Luxseen Blog Publisher"
 Write-Host "========================================"
 Write-Host ""
 
-# 1. Check blog repository
+Write-Host "Blog repository:"
+Write-Host $BlogRepo
+Write-Host ""
+
+# ==============================
+# 1. Check environment
+# ==============================
+
 if (-not (Test-Path $BlogRepo)) {
     Write-Host "ERROR: Blog repository not found." -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -22,6 +31,8 @@ if (-not (Test-Path $BlogRepo)) {
 
 if (-not (Test-Path (Join-Path $BlogRepo "hugo.toml"))) {
     Write-Host "ERROR: hugo.toml not found." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please place publish-blog.ps1 in the personal-blog root folder."
     Read-Host "Press Enter to exit"
     exit 1
 }
@@ -32,26 +43,67 @@ if (-not (Test-Path (Join-Path $BlogRepo ".git"))) {
     exit 1
 }
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "ERROR: Git is not installed or not available in PATH." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+if (-not (Get-Command hugo -ErrorAction SilentlyContinue)) {
+    Write-Host "ERROR: Hugo is not installed or not available in PATH." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
 if (-not (Test-Path $PostsDir)) {
     New-Item -ItemType Directory -Path $PostsDir -Force | Out-Null
 }
 
 Set-Location $BlogRepo
 
-# 2. Pull latest version
+# ==============================
+# 2. Check branch
+# ==============================
+
+$CurrentBranch = git branch --show-current
+
+if ($CurrentBranch -ne $MainBranch) {
+    Write-Host ""
+    Write-Host "ERROR: Current Git branch is not main." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Current branch:"
+    Write-Host $CurrentBranch
+    Write-Host ""
+    Write-Host "Please switch to main first:"
+    Write-Host "git checkout main"
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+# ==============================
+# 3. Pull latest version
+# ==============================
+
 Write-Host "[1/7] Pulling latest version from GitHub..." -ForegroundColor Cyan
 
-git pull --ff-only origin main
+git pull --ff-only origin $MainBranch
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "ERROR: git pull failed." -ForegroundColor Red
+    Write-Host ""
     Write-Host "Please resolve the Git issue before publishing."
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-# 3. Select Markdown file
+Write-Host ""
+Write-Host "GitHub sync completed." -ForegroundColor Green
+
+# ==============================
+# 4. Select Markdown file
+# ==============================
+
 Write-Host ""
 Write-Host "[2/7] Select an Obsidian Markdown file..." -ForegroundColor Cyan
 
@@ -65,6 +117,7 @@ $dialog.Multiselect = $false
 $result = $dialog.ShowDialog()
 
 if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+    Write-Host ""
     Write-Host "Publishing cancelled."
     exit 0
 }
@@ -77,7 +130,10 @@ Write-Host ""
 Write-Host "Selected file:" -ForegroundColor Green
 Write-Host $SourceFile
 
-# 4. Check front matter
+# ==============================
+# 5. Check front matter
+# ==============================
+
 Write-Host ""
 Write-Host "[3/7] Checking article front matter..." -ForegroundColor Cyan
 
@@ -104,8 +160,10 @@ if ($content -notmatch '(?m)^categories\s*:') {
 if ($content -match '(?im)^draft\s*:\s*true\s*$') {
     Write-Host ""
     Write-Host "STOP: This article is still a draft." -ForegroundColor Yellow
+    Write-Host ""
     Write-Host "Change:"
     Write-Host "draft: true"
+    Write-Host ""
     Write-Host "to:"
     Write-Host "draft: false"
     Write-Host ""
@@ -121,18 +179,56 @@ if ($content -notmatch '(?im)^draft\s*:\s*false\s*$') {
     exit 1
 }
 
+Write-Host ""
 Write-Host "Front matter check passed." -ForegroundColor Green
 
-# 5. Copy article into Hugo
+# ==============================
+# 6. Copy article into Hugo
+# ==============================
+
 Write-Host ""
 Write-Host "[4/7] Copying article into Hugo..." -ForegroundColor Cyan
 
-Copy-Item -LiteralPath $SourceFile -Destination $TargetFile -Force
+$SourceFullPath = [System.IO.Path]::GetFullPath($SourceFile)
+$TargetFullPath = [System.IO.Path]::GetFullPath($TargetFile)
 
-Write-Host "Copied to:"
+if ($SourceFullPath -ne $TargetFullPath) {
+
+    if (Test-Path $TargetFile) {
+
+        Write-Host ""
+        Write-Host "An article with the same filename already exists:" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host $FileName
+        Write-Host ""
+
+        $ConfirmUpdate = Read-Host "Type UPDATE to overwrite the existing Hugo copy"
+
+        if ($ConfirmUpdate -ne "UPDATE") {
+            Write-Host ""
+            Write-Host "Publishing cancelled."
+            exit 0
+        }
+    }
+
+    Copy-Item `
+        -LiteralPath $SourceFile `
+        -Destination $TargetFile `
+        -Force
+}
+else {
+    Write-Host ""
+    Write-Host "Article is already inside content/posts."
+}
+
+Write-Host ""
+Write-Host "Hugo article:"
 Write-Host $TargetFile
 
-# 6. Hugo build test
+# ==============================
+# 7. Hugo build test
+# ==============================
+
 Write-Host ""
 Write-Host "[5/7] Running Hugo build test..." -ForegroundColor Cyan
 
@@ -146,9 +242,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Host ""
 Write-Host "Hugo build passed." -ForegroundColor Green
 
-# 7. Git add and commit
+# ==============================
+# 8. Git add and commit
+# ==============================
+
 Write-Host ""
 Write-Host "[6/7] Creating Git commit..." -ForegroundColor Cyan
 
@@ -166,28 +266,43 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+
 $CommitMessage = "Publish article: $BaseName"
 
 git commit -m $CommitMessage
 
 if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
     Write-Host "ERROR: git commit failed." -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
 }
 
-# 8. Push
+# ==============================
+# 9. Push
+# ==============================
+
 Write-Host ""
 Write-Host "[7/7] Pushing to GitHub..." -ForegroundColor Cyan
 
-git push origin main
+git push origin $MainBranch
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "ERROR: git push failed." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "The commit already exists locally."
+    Write-Host "You can retry later with:"
+    Write-Host ""
+    Write-Host "git push origin main"
+    Write-Host ""
     Read-Host "Press Enter to exit"
     exit 1
 }
+
+# ==============================
+# Success
+# ==============================
 
 Write-Host ""
 Write-Host "========================================"
