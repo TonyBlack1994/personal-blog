@@ -1,710 +1,823 @@
 $ErrorActionPreference = "Stop"
 
-# ============================================================
-# Luxseen Blog Manager
-# Publish / Hide / Restore / Delete
-# ============================================================
+
+# =====================================
+# Luxseen Blog Manager v1.1
+# =====================================
+
 
 $BlogRepo = $PSScriptRoot
+
 $PostsDir = Join-Path $BlogRepo "content\posts"
-$MainBranch = "main"
 
-# ============================================================
-# Basic functions
-# ============================================================
+$BackupDir = Join-Path $BlogRepo "backup\deleted"
 
-function Pause-AndExit {
-    param(
-        [int]$Code = 0
-    )
+$Branch = "main"
 
-    Write-Host ""
-    Read-Host "Press Enter to exit"
-    exit $Code
-}
 
-function Show-Header {
 
-    Clear-Host
+function Init {
 
-    Write-Host ""
-    Write-Host "========================================"
-    Write-Host "        Luxseen Blog Manager"
-    Write-Host "========================================"
-    Write-Host ""
-}
-
-function Test-Environment {
-
-    if (-not (Test-Path $BlogRepo)) {
-        Write-Host "ERROR: Blog repository not found." -ForegroundColor Red
-        Pause-AndExit 1
-    }
-
-    if (-not (Test-Path (Join-Path $BlogRepo "hugo.toml"))) {
-        Write-Host "ERROR: hugo.toml not found." -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Put luxseen-blog.ps1 in the personal-blog root folder."
-        Pause-AndExit 1
-    }
-
-    if (-not (Test-Path (Join-Path $BlogRepo ".git"))) {
-        Write-Host "ERROR: This folder is not a Git repository." -ForegroundColor Red
-        Pause-AndExit 1
-    }
-
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        Write-Host "ERROR: Git is not installed." -ForegroundColor Red
-        Pause-AndExit 1
-    }
-
-    if (-not (Get-Command hugo -ErrorAction SilentlyContinue)) {
-        Write-Host "ERROR: Hugo is not installed." -ForegroundColor Red
-        Pause-AndExit 1
-    }
-
-    if (-not (Test-Path $PostsDir)) {
-        New-Item -ItemType Directory -Path $PostsDir -Force | Out-Null
-    }
 
     Set-Location $BlogRepo
-}
 
-function Sync-GitHub {
 
-    Write-Host ""
-    Write-Host "[SYNC] Pulling latest version from GitHub..." -ForegroundColor Cyan
-    Write-Host ""
+    if (!(Test-Path "hugo.toml")) {
 
-    git pull --ff-only origin $MainBranch
+        Write-Host "Missing hugo.toml"
 
-    if ($LASTEXITCODE -ne 0) {
-
-        Write-Host ""
-        Write-Host "ERROR: git pull failed." -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Please resolve the Git problem first."
-
-        Pause-AndExit 1
+        exit
     }
 
-    Write-Host ""
-    Write-Host "GitHub sync completed." -ForegroundColor Green
-}
 
-function Select-MarkdownFile {
+    if (!(Test-Path ".git")) {
 
-    param(
-        [string]$Title,
-        [string]$InitialDirectory
-    )
+        Write-Host "Git repository missing"
 
-    Add-Type -AssemblyName System.Windows.Forms
-
-    $Dialog = New-Object System.Windows.Forms.OpenFileDialog
-
-    $Dialog.Title = $Title
-    $Dialog.Filter = "Markdown files (*.md)|*.md"
-    $Dialog.Multiselect = $false
-
-    if ($InitialDirectory -and (Test-Path $InitialDirectory)) {
-        $Dialog.InitialDirectory = $InitialDirectory
+        exit
     }
 
-    $Result = $Dialog.ShowDialog()
 
-    if ($Result -ne [System.Windows.Forms.DialogResult]::OK) {
-        return $null
+    if (!(Test-Path $BackupDir)) {
+
+        New-Item $BackupDir -ItemType Directory | Out-Null
+
     }
 
-    return $Dialog.FileName
 }
 
-function Test-IsInsidePosts {
 
-    param(
-        [string]$FilePath
-    )
 
-    $PostsRoot = [System.IO.Path]::GetFullPath($PostsDir).TrimEnd("\") + "\"
-    $FullFile = [System.IO.Path]::GetFullPath($FilePath)
 
-    return $FullFile.StartsWith(
-        $PostsRoot,
-        [System.StringComparison]::OrdinalIgnoreCase
-    )
+# =====================================
+# Git Sync
+# =====================================
+
+
+function Sync-Git {
+
+
+    Write-Host ""
+
+    Write-Host "Sync GitHub..." -ForegroundColor Cyan
+
+
+    git pull --ff-only origin $Branch
+
+
+    if ($LASTEXITCODE -ne 0){
+
+        Write-Host "Git sync failed"
+
+        exit
+    }
+
+
+    Write-Host "Sync completed" -ForegroundColor Green
+
 }
 
-function Test-HugoBuild {
+
+
+
+# =====================================
+# Hugo Build
+# =====================================
+
+
+function Build-Hugo {
+
 
     Write-Host ""
-    Write-Host "[HUGO] Running production build test..." -ForegroundColor Cyan
-    Write-Host ""
+
+    Write-Host "Running Hugo build..." -ForegroundColor Cyan
+
 
     hugo
 
-    if ($LASTEXITCODE -ne 0) {
 
-        Write-Host ""
-        Write-Host "ERROR: Hugo build failed." -ForegroundColor Red
-        Write-Host "Nothing was pushed to GitHub."
 
-        return $false
+    if($LASTEXITCODE -ne 0){
+
+        Write-Host "Hugo failed" -ForegroundColor Red
+
+        exit
     }
 
-    Write-Host ""
-    Write-Host "Hugo build passed." -ForegroundColor Green
 
-    return $true
+
+    Write-Host "Hugo OK" -ForegroundColor Green
+
 }
 
-function Push-Change {
 
-    param(
-        [string]$RelativeFile,
-        [string]$CommitMessage
-    )
 
-    Write-Host ""
-    Write-Host "[GIT] Staging changes..." -ForegroundColor Cyan
 
-    git add -A -- $RelativeFile
+
+# =====================================
+# Git Push
+# =====================================
+
+
+function Commit-Push($Message){
+
+
+    git add -A
+
 
     git diff --cached --quiet
 
-    if ($LASTEXITCODE -eq 0) {
 
-        Write-Host ""
-        Write-Host "No changes detected." -ForegroundColor Yellow
+    if($LASTEXITCODE -eq 0){
 
-        return $false
+        Write-Host "No changes"
+
+        return
     }
+
+
+
+    git commit -m $Message
+
+
+
+    git push origin $Branch
+
+
 
     Write-Host ""
-    Write-Host "[GIT] Creating commit..." -ForegroundColor Cyan
 
-    git commit -m $CommitMessage
+    Write-Host "GitHub updated" -ForegroundColor Green
 
-    if ($LASTEXITCODE -ne 0) {
-
-        Write-Host ""
-        Write-Host "ERROR: git commit failed." -ForegroundColor Red
-
-        return $false
-    }
-
-    Write-Host ""
-    Write-Host "[GIT] Pushing to GitHub..." -ForegroundColor Cyan
-
-    git push origin $MainBranch
-
-    if ($LASTEXITCODE -ne 0) {
-
-        Write-Host ""
-        Write-Host "ERROR: git push failed." -ForegroundColor Red
-        Write-Host ""
-        Write-Host "The commit exists locally."
-        Write-Host "Retry later with:"
-        Write-Host ""
-        Write-Host "git push origin main"
-
-        return $false
-    }
-
-    return $true
 }
 
-# ============================================================
-# 1. Publish
-# ============================================================
+# =====================================
+# Select Article
+# =====================================
+
+
+function Select-Article {
+
+
+    $Files = Get-ChildItem $PostsDir -Filter *.md
+
+
+    if($Files.Count -eq 0){
+
+        Write-Host "No articles found"
+
+        return $null
+    }
+
+
+    Write-Host ""
+
+
+    for($i=0;$i -lt $Files.Count;$i++){
+
+        Write-Host "$($i+1). $($Files[$i].Name)"
+
+    }
+
+
+    Write-Host ""
+
+
+    $Num = Read-Host "Select number"
+
+
+    return $Files[$Num-1]
+
+}
+
+
+
+
+
+# =====================================
+# 1 Publish Article
+# =====================================
+
 
 function Publish-Article {
 
-    Show-Header
 
-    Write-Host "ACTION: Publish Article" -ForegroundColor Green
+    Sync-Git
 
-    Sync-GitHub
 
-    Write-Host ""
-    Write-Host "Select the article from your Obsidian vault." -ForegroundColor Cyan
 
-    $SourceFile = Select-MarkdownFile `
-        -Title "Select Obsidian article to publish" `
-        -InitialDirectory ""
+    Add-Type -AssemblyName System.Windows.Forms
 
-    if (-not $SourceFile) {
-        Write-Host ""
-        Write-Host "Publishing cancelled."
-        Pause-AndExit 0
+
+    $Dialog = New-Object System.Windows.Forms.OpenFileDialog
+
+
+    $Dialog.Filter = "Markdown (*.md)|*.md"
+
+
+    $Result = $Dialog.ShowDialog()
+
+
+
+    if($Result -ne "OK"){
+
+        return
+
     }
 
-    $FileName = Split-Path $SourceFile -Leaf
-    $TargetFile = Join-Path $PostsDir $FileName
 
-    Write-Host ""
-    Write-Host "Selected file:"
-    Write-Host $SourceFile
 
-    Write-Host ""
-    Write-Host "[CHECK] Checking article front matter..." -ForegroundColor Cyan
+    $Source = $Dialog.FileName
 
-    $Content = Get-Content -LiteralPath $SourceFile -Raw -Encoding UTF8
 
-    if ($Content -notmatch '(?m)^title\s*:') {
-        Write-Host "ERROR: Missing title property." -ForegroundColor Red
-        Pause-AndExit 1
+    $Name = Split-Path $Source -Leaf
+
+
+    $Target = Join-Path $PostsDir $Name
+
+
+
+    $Content = Get-Content $Source -Raw -Encoding UTF8
+
+
+
+    if($Content -notmatch "title"){
+
+        Write-Host "Missing title"
+
+        return
+
     }
 
-    if ($Content -notmatch '(?m)^date\s*:') {
-        Write-Host "ERROR: Missing date property." -ForegroundColor Red
-        Pause-AndExit 1
+
+    if($Content -notmatch "date"){
+
+        Write-Host "Missing date"
+
+        return
+
     }
 
-    if ($Content -notmatch '(?m)^categories\s*:') {
-        Write-Host "ERROR: Missing categories property." -ForegroundColor Red
-        Pause-AndExit 1
-    }
 
-    if ($Content -match '(?im)^draft\s*:\s*true\s*$') {
 
-        Write-Host ""
-        Write-Host "STOP: This article is still a draft." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Change:"
-        Write-Host "draft: true"
-        Write-Host ""
-        Write-Host "to:"
-        Write-Host "draft: false"
-
-        Pause-AndExit 1
-    }
-
-    if ($Content -notmatch '(?im)^draft\s*:\s*false\s*$') {
-
-        Write-Host ""
-        Write-Host "STOP: draft: false was not found." -ForegroundColor Yellow
-        Write-Host "Publishing cancelled for safety."
-
-        Pause-AndExit 1
-    }
-
-    Write-Host ""
-    Write-Host "Front matter check passed." -ForegroundColor Green
-
-    if (Test-Path $TargetFile) {
+    if($Content -match "draft:\s*true"){
 
         Write-Host ""
-        Write-Host "An article with the same filename already exists." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host $FileName
-        Write-Host ""
 
-        $ConfirmUpdate = Read-Host "Type UPDATE to overwrite the Hugo copy"
+        Write-Host "Article is draft. Stop."
 
-        if ($ConfirmUpdate -ne "UPDATE") {
-            Write-Host ""
-            Write-Host "Publishing cancelled."
-            Pause-AndExit 0
-        }
+        return
+
     }
 
-    Write-Host ""
-    Write-Host "[COPY] Copying article into Hugo..." -ForegroundColor Cyan
 
-    Copy-Item `
-        -LiteralPath $SourceFile `
-        -Destination $TargetFile `
-        -Force
 
-    Write-Host ""
-    Write-Host "Copied to:"
-    Write-Host $TargetFile
 
-    if (-not (Test-HugoBuild)) {
-        Pause-AndExit 1
-    }
+    Copy-Item $Source $Target -Force
 
-    $RelativeFile = "content/posts/$FileName"
 
-    $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
 
-    if (-not (Push-Change `
-        -RelativeFile $RelativeFile `
-        -CommitMessage "Publish article: $BaseName")) {
+    Build-Hugo
 
-        Pause-AndExit 1
-    }
 
-    Write-Host ""
-    Write-Host "========================================"
-    Write-Host "       PUBLISH SUCCESSFUL" -ForegroundColor Green
-    Write-Host "========================================"
-    Write-Host ""
-    Write-Host "Article:"
-    Write-Host $FileName
-    Write-Host ""
-    Write-Host "GitHub updated successfully."
-    Write-Host "Cloudflare Pages will deploy automatically."
-    Write-Host ""
-    Write-Host "Website:"
-    Write-Host "https://luxseen.com/"
 
-    Pause-AndExit 0
+    Commit-Push "Publish article $Name"
+
+
+
 }
 
-# ============================================================
-# 2. Hide
-# ============================================================
 
-function Hide-Article {
 
-    Show-Header
 
-    Write-Host "ACTION: Hide Article" -ForegroundColor Yellow
 
-    Sync-GitHub
+# =====================================
+# 2 Delete Article
+# =====================================
 
-    $ArticlePath = Select-MarkdownFile `
-        -Title "Select Luxseen article to hide" `
-        -InitialDirectory $PostsDir
-
-    if (-not $ArticlePath) {
-        Write-Host ""
-        Write-Host "Operation cancelled."
-        Pause-AndExit 0
-    }
-
-    if (-not (Test-IsInsidePosts $ArticlePath)) {
-
-        Write-Host ""
-        Write-Host "ERROR: Select an article inside content/posts." -ForegroundColor Red
-
-        Pause-AndExit 1
-    }
-
-    $FileName = Split-Path $ArticlePath -Leaf
-
-    Write-Host ""
-    Write-Host "Selected article:"
-    Write-Host $FileName
-
-    $Content = Get-Content `
-        -LiteralPath $ArticlePath `
-        -Raw `
-        -Encoding UTF8
-
-    if ($Content -match '(?im)^draft\s*:\s*true\s*$') {
-
-        Write-Host ""
-        Write-Host "This article is already hidden." -ForegroundColor Yellow
-
-        Pause-AndExit 0
-    }
-
-    if ($Content -notmatch '(?im)^draft\s*:\s*false\s*$') {
-
-        Write-Host ""
-        Write-Host "ERROR: draft: false was not found." -ForegroundColor Red
-
-        Pause-AndExit 1
-    }
-
-    $Content = [System.Text.RegularExpressions.Regex]::Replace(
-        $Content,
-        '(?im)^draft\s*:\s*false\s*$',
-        'draft: true'
-    )
-
-    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-
-    [System.IO.File]::WriteAllText(
-        $ArticlePath,
-        $Content,
-        $Utf8NoBom
-    )
-
-    Write-Host ""
-    Write-Host "Changed to draft: true." -ForegroundColor Green
-
-    if (-not (Test-HugoBuild)) {
-        Pause-AndExit 1
-    }
-
-    $RelativeFile = $ArticlePath.Substring(
-        $BlogRepo.Length + 1
-    ).Replace("\", "/")
-
-    if (-not (Push-Change `
-        -RelativeFile $RelativeFile `
-        -CommitMessage "Hide article: $FileName")) {
-
-        Pause-AndExit 1
-    }
-
-    Write-Host ""
-    Write-Host "========================================"
-    Write-Host "         ARTICLE HIDDEN" -ForegroundColor Green
-    Write-Host "========================================"
-    Write-Host ""
-    Write-Host "The article will disappear from Luxseen."
-    Write-Host ""
-    Write-Host "The Hugo file is still preserved."
-    Write-Host "The Obsidian source is not changed."
-
-    Pause-AndExit 0
-}
-
-# ============================================================
-# 3. Restore
-# ============================================================
-
-function Restore-Article {
-
-    Show-Header
-
-    Write-Host "ACTION: Restore Article" -ForegroundColor Green
-
-    Sync-GitHub
-
-    $ArticlePath = Select-MarkdownFile `
-        -Title "Select hidden Luxseen article to restore" `
-        -InitialDirectory $PostsDir
-
-    if (-not $ArticlePath) {
-        Write-Host ""
-        Write-Host "Operation cancelled."
-        Pause-AndExit 0
-    }
-
-    if (-not (Test-IsInsidePosts $ArticlePath)) {
-
-        Write-Host ""
-        Write-Host "ERROR: Select an article inside content/posts." -ForegroundColor Red
-
-        Pause-AndExit 1
-    }
-
-    $FileName = Split-Path $ArticlePath -Leaf
-
-    $Content = Get-Content `
-        -LiteralPath $ArticlePath `
-        -Raw `
-        -Encoding UTF8
-
-    if ($Content -match '(?im)^draft\s*:\s*false\s*$') {
-
-        Write-Host ""
-        Write-Host "This article is already published." -ForegroundColor Yellow
-
-        Pause-AndExit 0
-    }
-
-    if ($Content -notmatch '(?im)^draft\s*:\s*true\s*$') {
-
-        Write-Host ""
-        Write-Host "ERROR: draft: true was not found." -ForegroundColor Red
-
-        Pause-AndExit 1
-    }
-
-    $Content = [System.Text.RegularExpressions.Regex]::Replace(
-        $Content,
-        '(?im)^draft\s*:\s*true\s*$',
-        'draft: false'
-    )
-
-    $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-
-    [System.IO.File]::WriteAllText(
-        $ArticlePath,
-        $Content,
-        $Utf8NoBom
-    )
-
-    Write-Host ""
-    Write-Host "Changed to draft: false." -ForegroundColor Green
-
-    if (-not (Test-HugoBuild)) {
-        Pause-AndExit 1
-    }
-
-    $RelativeFile = $ArticlePath.Substring(
-        $BlogRepo.Length + 1
-    ).Replace("\", "/")
-
-    if (-not (Push-Change `
-        -RelativeFile $RelativeFile `
-        -CommitMessage "Restore article: $FileName")) {
-
-        Pause-AndExit 1
-    }
-
-    Write-Host ""
-    Write-Host "========================================"
-    Write-Host "        ARTICLE RESTORED" -ForegroundColor Green
-    Write-Host "========================================"
-    Write-Host ""
-    Write-Host "Cloudflare Pages will redeploy automatically."
-    Write-Host ""
-    Write-Host "The article will appear on Luxseen again."
-
-    Pause-AndExit 0
-}
-
-# ============================================================
-# 4. Delete
-# ============================================================
 
 function Delete-Article {
 
-    Show-Header
 
-    Write-Host "ACTION: Delete Article" -ForegroundColor Red
+    Sync-Git
 
-    Sync-GitHub
 
-    $ArticlePath = Select-MarkdownFile `
-        -Title "Select Luxseen article to delete" `
-        -InitialDirectory $PostsDir
 
-    if (-not $ArticlePath) {
-        Write-Host ""
-        Write-Host "Operation cancelled."
-        Pause-AndExit 0
+    $File = Select-Article
+
+
+
+    if($null -eq $File){
+
+        return
+
     }
 
-    if (-not (Test-IsInsidePosts $ArticlePath)) {
 
-        Write-Host ""
-        Write-Host "ERROR: Select an article inside content/posts." -ForegroundColor Red
 
-        Pause-AndExit 1
-    }
-
-    $FileName = Split-Path $ArticlePath -Leaf
-
-    $RelativeFile = $ArticlePath.Substring(
-        $BlogRepo.Length + 1
-    ).Replace("\", "/")
 
     Write-Host ""
+
     Write-Host "WARNING" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "You are about to delete this Hugo article:"
-    Write-Host ""
-    Write-Host $FileName
-    Write-Host ""
-    Write-Host "The Hugo copy will be moved to Windows Recycle Bin."
-    Write-Host ""
-    Write-Host "The original Obsidian article will NOT be deleted."
-    Write-Host ""
 
-    $ConfirmDelete = Read-Host "Type DELETE to continue"
+    Write-Host "Delete:"
+    Write-Host $File.FullName
 
-    if ($ConfirmDelete -ne "DELETE") {
 
-        Write-Host ""
-        Write-Host "Deletion cancelled."
 
-        Pause-AndExit 0
+    $Confirm = Read-Host "Type DELETE"
+
+
+
+    if($Confirm -ne "DELETE"){
+
+        Write-Host "Cancelled"
+
+        return
+
     }
 
-    Add-Type -AssemblyName Microsoft.VisualBasic
 
-    try {
 
-        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
-            $ArticlePath,
-            [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs,
-            [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin
-        )
-    }
-    catch {
 
-        Write-Host ""
-        Write-Host "ERROR: Could not move the file to Recycle Bin." -ForegroundColor Red
+    # backup first
 
-        Pause-AndExit 1
-    }
+    Copy-Item `
+    $File.FullName `
+    $BackupDir `
+    -Force
 
-    Write-Host ""
-    Write-Host "Hugo article moved to Recycle Bin." -ForegroundColor Green
 
-    if (-not (Test-HugoBuild)) {
-        Pause-AndExit 1
-    }
 
-    if (-not (Push-Change `
-        -RelativeFile $RelativeFile `
-        -CommitMessage "Delete article: $FileName")) {
+    Remove-Item $File.FullName
 
-        Pause-AndExit 1
-    }
 
-    Write-Host ""
-    Write-Host "========================================"
-    Write-Host "        ARTICLE DELETED" -ForegroundColor Green
-    Write-Host "========================================"
-    Write-Host ""
-    Write-Host "GitHub has been updated."
-    Write-Host "Cloudflare Pages will redeploy automatically."
-    Write-Host ""
-    Write-Host "The original Obsidian article is still preserved."
 
-    Pause-AndExit 0
+    Build-Hugo
+
+
+
+    Commit-Push "Delete article $($File.Name)"
+
+
+
 }
 
-# ============================================================
-# Main menu
-# ============================================================
 
-Show-Header
 
-Test-Environment
 
-Write-Host "Blog folder:"
-Write-Host $BlogRepo
 
-Write-Host ""
-Write-Host "Choose an action:"
-Write-Host ""
-Write-Host "1 - Publish article"
-Write-Host "2 - Hide article"
-Write-Host "3 - Restore article"
-Write-Host "4 - Delete article"
-Write-Host "0 - Exit"
-Write-Host ""
+# =====================================
+# 3 Hide Article
+# =====================================
 
-$Choice = Read-Host "Enter 1, 2, 3, 4 or 0"
 
-switch ($Choice) {
+function Hide-Article {
 
-    "1" {
-        Publish-Article
+
+    Sync-Git
+
+
+
+    $File = Select-Article
+
+
+
+    if($null -eq $File){
+
+        return
+
     }
 
-    "2" {
-        Hide-Article
-    }
 
-    "3" {
-        Restore-Article
-    }
 
-    "4" {
-        Delete-Article
-    }
 
-    "0" {
-        exit 0
-    }
+    $Text = Get-Content `
+    $File.FullName `
+    -Raw
 
-    default {
 
-        Write-Host ""
-        Write-Host "Invalid option." -ForegroundColor Red
 
-        Pause-AndExit 1
-    }
+    $Text = $Text -replace `
+    "draft:\s*false",`
+    "draft: true"
+
+
+
+    Set-Content `
+    $File.FullName `
+    $Text `
+    -Encoding UTF8
+
+
+
+
+    Commit-Push "Hide article $($File.Name)"
+
+
+
 }
+
+
+
+
+
+# =====================================
+# 4 Restore Article
+# =====================================
+
+
+function Restore-Article {
+
+
+    Sync-Git
+
+
+
+    $File = Select-Article
+
+
+
+    if($null -eq $File){
+
+        return
+
+    }
+
+
+
+    $Text = Get-Content `
+    $File.FullName `
+    -Raw
+
+
+
+    $Text = $Text -replace `
+    "draft:\s*true",`
+    "draft: false"
+
+
+
+    Set-Content `
+    $File.FullName `
+    $Text `
+    -Encoding UTF8
+
+
+
+
+    Commit-Push "Restore article $($File.Name)"
+
+
+
+}
+
+# =====================================
+# 5 List Posts
+# =====================================
+
+
+function List-Posts {
+
+
+    Write-Host ""
+
+    Write-Host "====== Luxseen Posts ======" -ForegroundColor Cyan
+
+
+    $Files = Get-ChildItem $PostsDir -Filter *.md
+
+
+
+    if($Files.Count -eq 0){
+
+        Write-Host "No posts found"
+
+        return
+
+    }
+
+
+
+    foreach($File in $Files){
+
+        Write-Host "- $($File.Name)"
+
+    }
+
+
+}
+
+
+
+
+
+# =====================================
+# 6 Sync GitHub
+# =====================================
+
+
+function Sync-Only {
+
+
+    Sync-Git
+
+
+}
+
+
+
+
+
+# =====================================
+# 7 Local Preview
+# =====================================
+
+
+function Preview-Site {
+
+
+    Write-Host ""
+
+    Write-Host "Starting Hugo server..."
+
+    hugo server
+
+
+}
+
+
+
+
+
+# =====================================
+# 8 Update Website
+# =====================================
+
+
+function Update-Website {
+
+
+    Sync-Git
+
+
+    Build-Hugo
+
+
+    Commit-Push "Update website"
+
+}
+
+
+
+
+
+# =====================================
+# 9 Open Website
+# =====================================
+
+
+function Open-Website {
+
+
+    Start-Process "https://luxseen.com/"
+
+}
+
+
+
+
+
+# =====================================
+# 10 Git Status
+# =====================================
+
+
+function Show-Git-Status {
+
+
+    Write-Host ""
+
+    Write-Host "====== Git Status ======"
+
+
+    git status
+
+
+    Write-Host ""
+
+    Write-Host "Last commit:"
+
+
+    git log -1 --oneline
+
+
+
+}
+
+
+
+
+
+# =====================================
+# 11 Search Article
+# =====================================
+
+
+function Search-Article {
+
+
+    $Keyword = Read-Host "Search keyword"
+
+
+
+    if([string]::IsNullOrWhiteSpace($Keyword)){
+
+        return
+
+    }
+
+
+
+
+    Write-Host ""
+
+    Write-Host "Search result:" -ForegroundColor Cyan
+
+
+
+
+    Get-ChildItem $PostsDir -Filter *.md |
+    Select-String $Keyword |
+    Select Path,LineNumber,Line
+
+
+
+}
+
+
+
+
+
+# =====================================
+# MENU
+# =====================================
+
+
+Init
+
+
+
+while($true){
+
+
+    Clear-Host
+
+
+
+    Write-Host ""
+    Write-Host "================================"
+    Write-Host "   Luxseen Blog Manager v1.1"
+    Write-Host "================================"
+    Write-Host ""
+
+
+
+    Write-Host "1. Publish Article"
+
+    Write-Host "2. Delete Article"
+
+    Write-Host "3. Hide Article"
+
+    Write-Host "4. Restore Article"
+
+    Write-Host "5. List Posts"
+
+    Write-Host "6. Sync GitHub"
+
+    Write-Host "7. Local Preview"
+
+    Write-Host "8. Update Website"
+
+    Write-Host "9. Open Website"
+
+    Write-Host "10. Git Status"
+
+    Write-Host "11. Search Article"
+
+    Write-Host ""
+
+    Write-Host "0. Exit"
+
+
+    Write-Host ""
+
+
+    $Choice = Read-Host "Select"
+
+
+
+    switch($Choice){
+
+
+        "1" {
+
+            Publish-Article
+
+        }
+
+
+        "2" {
+
+            Delete-Article
+
+        }
+
+
+        "3" {
+
+            Hide-Article
+
+        }
+
+
+        "4" {
+
+            Restore-Article
+
+        }
+
+
+        "5" {
+
+            List-Posts
+
+        }
+
+
+        "6" {
+
+            Sync-Only
+
+        }
+
+
+        "7" {
+
+            Preview-Site
+
+        }
+
+
+        "8" {
+
+            Update-Website
+
+        }
+
+
+        "9" {
+
+            Open-Website
+
+        }
+
+
+        "10" {
+
+            Show-Git-Status
+
+        }
+
+
+        "11" {
+
+            Search-Article
+
+        }
+
+
+        "0" {
+
+            exit
+
+        }
+
+
+
+        default {
+
+            Write-Host "Invalid choice"
+
+        }
+
+
+    }
+
+
+
+    Pause
+
+
+}
+
